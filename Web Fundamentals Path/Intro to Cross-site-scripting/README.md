@@ -257,3 +257,41 @@ Depending on the application and browser context, reflected XSS may allow an att
 ### Key Takeaway
 
 Reflected XSS involves request-controlled input being returned in an unsafe context. Finding reflected input is the first step; confirming executable JavaScript is necessary to establish the vulnerability.
+
+
+
+## Task 5: DOM-Based XSS
+
+### 1. What Is the DOM?
+DOM stands for Document Object Model. It represents an HTML page as objects that JavaScript can access and modify.
+
+### 2. What Is DOM-Based XSS?
+DOM-Based XSS occurs when client-side JavaScript handles attacker-controlled input unsafely, potentially causing JavaScript execution in the browser.
+<img width="486" height="266" alt="image" src="https://github.com/user-attachments/assets/16638df5-5d65-4728-a318-617d60f9fbf2" />
+
+### 3. Example
+```javascript
+document.getElementById('output').innerHTML = window.location.hash;
+```
+
+- `window.location.hash` reads the URL fragment after `#`.
+- `innerHTML` interprets a value as HTML.
+- Unsafe handling of untrusted input may create an XSS vulnerability.
+
+### 4. What to Look For
+- Sources: `window.location`, `window.location.hash`, and other attacker-controlled inputs.
+- Sinks: `innerHTML` and dangerous methods such as `eval()`.
+
+### 5. Prevention
+- Prefer `textContent` when inserting plain text.
+- Avoid `eval()` with untrusted input.
+- Use safe DOM APIs and context-appropriate output handling.
+
+### TryHackMe Answer
+**Question:** What unsafe JavaScript method is good to look for in source code?
+
+**Answer:** `eval()`
+
+### Key Takeaway
+DOM-Based XSS occurs through unsafe client-side JavaScript handling of untrusted input.
+
