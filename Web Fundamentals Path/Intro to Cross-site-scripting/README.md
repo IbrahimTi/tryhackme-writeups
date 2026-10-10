@@ -181,3 +181,79 @@ Answer: `alert()`
 ### Key Takeaway
 
 XSS occurs when untrusted input is handled in a way that allows unintended JavaScript execution in a user's browser. Successful testing requires understanding where the input enters, how it is processed, and where it appears in the page.
+
+
+
+
+
+## Task 3: Reflected XSS
+
+### 1. What Is Reflected XSS?
+
+Reflected Cross-site Scripting occurs when user-controlled input from an HTTP request is included in a webpage without proper handling, potentially allowing unintended JavaScript execution.
+
+### 2. Example URL
+
+ <img width="418" height="49" alt="image" src="https://github.com/user-attachments/assets/690e591a-65f3-4b1b-bafb-5a19813e3320" />
+
+ <img width="360" height="78" alt="image" src="https://github.com/user-attachments/assets/0d56cb22-52b3-4179-9bc7-83934e17460c" />
+
+ 
+```text
+https://example.com/error?error=Invalid
+```
+
+- `?` starts the query string.
+- `error` is the query parameter.
+- `Invalid` is the parameter value.
+
+If the application inserts the value into the webpage unsafely, reflected XSS may be possible.
+
+### 3. How Reflected XSS Works
+
+1. An attacker crafts a URL containing manipulated input.
+2. A victim visits the URL.
+3. The application processes the input.
+4. The input is reflected into the HTTP response.
+5. If the browser interprets the input as executable code, XSS may occur.
+
+<img width="609" height="47" alt="image" src="https://github.com/user-attachments/assets/63d8044d-4583-440e-8179-5d30c3ebd2a9" />
+
+<img width="566" height="97" alt="image" src="https://github.com/user-attachments/assets/cca13262-2168-40be-85fd-f36e08f563a5" />
+
+### 4. Where to Test
+
+- **URL query string:** Query parameters such as `?error=Invalid`.
+- **URL file path:** User-controlled path segments that may be reflected in the response.
+- **HTTP headers:** Some header values may be reflected into a webpage.
+
+### 5. Testing Methodology
+
+1. Identify user-controlled URL parameters.
+2. Submit a harmless marker such as `XSS_TEST_123`.
+3. Check whether the marker appears in the response.
+4. Inspect the HTTP request and response using Burp Suite.
+5. Identify the HTML or JavaScript context in which the input appears.
+6. Use an appropriate harmless PoC in an authorized lab.
+7. Confirm whether JavaScript execution actually occurs.
+
+### 6. Potential Impact
+
+Depending on the application and browser context, reflected XSS may allow an attacker to execute JavaScript in a victim's browser. This could expose sensitive information or enable unauthorized actions.
+
+### 7. Prevention
+
+- Contextually encode untrusted output.
+- Avoid inserting untrusted data through unsafe DOM operations.
+- Validate inputs where appropriate.
+- Use Content Security Policy (CSP) as an additional defensive layer.
+
+### TryHackMe Answer
+
+**Question:** Where in a URL is a good place to test for reflected XSS?
+
+**Answer:** URL query string (query parameters).
+
+### Key Takeaway
+
+Reflected XSS involves request-controlled input being returned in an unsafe context. Finding reflected input is the first step; confirming executable JavaScript is necessary to establish the vulnerability.
